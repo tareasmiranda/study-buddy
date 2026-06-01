@@ -1,0 +1,31 @@
+[gd_scene format=3 uid="uid://c6dpa2sssjrmb"]
+
+[ext_resource type="SpriteFrames" uid="uid://bv5kjgnlafsmq" path="res://spr/jesufulvo.tres" id="1_ig7tw"]
+
+[node name="Main" type="Node2D" unique_id=102277029]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=352718149]
+position = Vector2(163, 124)
+sprite_frames = ExtResource("1_ig7tw")
+autoplay = "default"
+frame_progress = 0.51767224
+
+[node name="Button" type="Button" parent="AnimatedSprite2D" unique_id=263780053]
+offset_left = -155.0
+offset_top = -97.0
+offset_right = -65.0
+offset_bottom = -61.0
+text = "Hablar"
+
+[node name="Button2" type="Button" parent="AnimatedSprite2D" unique_id=1130670819]
+offset_left = -155.0
+offset_top = -36.0
+offset_right = -65.0
+text = "Sexo"
+
+[node name="Button3" type="Button" parent="AnimatedSprite2D" unique_id=1413595267]
+offset_left = -155.0
+offset_top = 27.0
+offset_right = -65.0
+offset_bottom = 63.0
+text = "Golpear"
