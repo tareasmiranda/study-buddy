@@ -1,22 +1,29 @@
 [gd_scene format=3 uid="uid://c6dpa2sssjrmb"]
 
-[ext_resource type="Script" uid="uid://duw4b8rusrakf" path="res://scripts/window_move.gd" id="1_0xm2m"]
-[ext_resource type="SpriteFrames" uid="uid://bv5kjgnlafsmq" path="res://spr/jesufulvo.tres" id="1_ig7tw"]
+[ext_resource type="Script" uid="uid://bpn4urv65y5o5" path="res://scripts/main.gd" id="1_0xm2m"]
+[ext_resource type="SpriteFrames" uid="uid://bv5kjgnlafsmq" path="res://animations/Vpet.tres" id="1_ig7tw"]
 
 [node name="Main" type="Node2D" unique_id=102277029]
 script = ExtResource("1_0xm2m")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=352718149]
-position = Vector2(112, 116)
+position = Vector2(116, 234)
 sprite_frames = ExtResource("1_ig7tw")
-autoplay = "default"
-frame_progress = 0.75950456
+animation = &"idle"
+autoplay = "idle"
+frame_progress = 0.11482203
 
 [node name="MenuButton" type="MenuButton" parent="AnimatedSprite2D" unique_id=1374422908]
-offset_left = -47.0
-offset_top = -86.0
-offset_right = 39.0
-offset_bottom = 71.0
+anchors_preset = -1
+anchor_left = -1.3330001
+anchor_top = -3.739
+anchor_right = 1.0
+anchor_bottom = -2.071
+offset_left = 30.0965
+offset_top = 101.873184
+offset_right = -17.889503
+offset_bottom = 91.863174
+grow_horizontal = 2
 toggle_mode = false
 button_mask = 2
 switch_on_hover = true
