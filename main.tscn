@@ -1,24 +1,24 @@
 [gd_scene format=3 uid="uid://c6dpa2sssjrmb"]
 
-[ext_resource type="Script" uid="uid://bpn4urv65y5o5" path="res://dragwindows.gd" id="1_0xm2m"]
+[ext_resource type="Script" uid="uid://bpn4urv65y5o5" path="res://scripts/main.gd" id="1_0xm2m"]
 [ext_resource type="SpriteFrames" uid="uid://bv5kjgnlafsmq" path="res://spr/jesufulvo.tres" id="1_ig7tw"]
 
 [node name="Main" type="Node2D" unique_id=102277029]
 script = ExtResource("1_0xm2m")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=352718149]
-position = Vector2(163, 124)
+position = Vector2(112, 116)
 sprite_frames = ExtResource("1_ig7tw")
 autoplay = "default"
 frame_progress = 0.75950456
 
 [node name="MenuButton" type="MenuButton" parent="AnimatedSprite2D" unique_id=1374422908]
-offset_left = -133.0
-offset_top = -81.0
-offset_right = -57.0
-offset_bottom = -50.0
+offset_left = -47.0
+offset_top = -86.0
+offset_right = 39.0
+offset_bottom = 71.0
 toggle_mode = false
-text = "Acciones"
+button_mask = 2
 switch_on_hover = true
 item_count = 4
 popup/item_0/text = "Hablar"
