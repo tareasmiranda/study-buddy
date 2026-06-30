@@ -16,7 +16,17 @@ func _ready() -> void:
 	
 	window.unresizable = false
 
-
+	# find the floor of ur taskbar and stuff
+	# set safe zone, screen minus taskbars
+	var usable_rect = DisplayServer.screen_get_usable_rect()
+	
+	#calc pos
+	# end.y is where taskbar is
+	var target_y = usable_rect.end.y - window.size.y
+	
+	#snap sprite there
+	# x equals 0 left edge, y equals target_y the floor
+	window.position = Vector2i(0, target_y)
 
 func _process(_delta):
 	var window = get_window()

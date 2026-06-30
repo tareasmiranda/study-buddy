@@ -7,7 +7,7 @@
 script = ExtResource("1_0xm2m")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=352718149]
-position = Vector2(93.00001, 125.00001)
+position = Vector2(98, 126.00001)
 scale = Vector2(4.1287875, 4.1287875)
 sprite_frames = ExtResource("1_ig7tw")
 animation = &"walking"
@@ -20,10 +20,10 @@ anchor_left = -1.3330001
 anchor_top = -3.739
 anchor_right = 1.0
 anchor_bottom = -2.071
-offset_left = 24.0
-offset_top = 64.0
-offset_right = 147.0
-offset_bottom = 200.0
+offset_left = 34.0
+offset_top = 73.0
+offset_right = 157.0
+offset_bottom = 209.0
 grow_horizontal = 2
 toggle_mode = false
 button_mask = 2
