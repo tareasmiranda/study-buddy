@@ -18,5 +18,22 @@ func _ready() -> void:
 
 
 
-func _process(delta: float) -> void:
-	pass
+func _process(_delta):
+	var window = get_window()
+	var move_vector = Vector2i(direction * move_speed)
+	
+	# apply to the OS window
+	window.position += move_vector
+	
+	# the safezone
+	# screen.get_usable_rect() returns screen area MINUS taskbar or docs linux
+	var usable_rect = DisplayServer.screen_get_usable_rect()
+	
+	#if right side of window > right side of screen
+	if window.position.x + window.size.x > usable_rect.x:
+		direction.x = -1
+		$AnimatedSprite2D.flip_h = true
+
+	elif window.position.x < usable_rect.position.x:
+		direction.x = 1
+		$AnimatedSprite2D.flip_h = false
