@@ -12,7 +12,7 @@ config_version=5
 
 config/name="StudyBuddy"
 run/main_scene="uid://c6dpa2sssjrmb"
-config/features=PackedStringArray("4.6", "GL Compatibility")
+config/features=PackedStringArray("4.7", "GL Compatibility")
 boot_splash/show_image=false
 boot_splash/use_filter=false
 boot_splash/image="uid://cfh1rppdudc5u"
@@ -20,8 +20,8 @@ config/icon="uid://cfh1rppdudc5u"
 
 [display]
 
-window/size/viewport_width=250
-window/size/viewport_height=250
+window/size/viewport_width=458
+window/size/viewport_height=523
 window/size/borderless=true
 window/size/transparent=true
 window/per_pixel_transparency/allowed=true

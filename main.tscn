@@ -7,22 +7,22 @@
 script = ExtResource("1_0xm2m")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=352718149]
-position = Vector2(116, 234)
+position = Vector2(138, 178)
+scale = Vector2(4.1287875, 4.1287875)
 sprite_frames = ExtResource("1_ig7tw")
-animation = &"idle"
-autoplay = "idle"
-frame_progress = 0.66001874
+animation = &"walking"
+autoplay = "walking"
 
-[node name="MenuButton" type="MenuButton" parent="AnimatedSprite2D" unique_id=1374422908]
+[node name="MenuButton" type="MenuButton" parent="." unique_id=1374422908]
 anchors_preset = -1
 anchor_left = -1.3330001
 anchor_top = -3.739
 anchor_right = 1.0
 anchor_bottom = -2.071
-offset_left = 30.0965
-offset_top = 101.873184
-offset_right = -17.889503
-offset_bottom = 91.863174
+offset_left = 85.0
+offset_top = 130.0
+offset_right = 208.0
+offset_bottom = 266.0
 grow_horizontal = 2
 toggle_mode = false
 button_mask = 2
