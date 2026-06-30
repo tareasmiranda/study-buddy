@@ -1,6 +1,6 @@
 extends Node2D
 
-var move_speed = 1
+var move_speed = 3
 var direction = Vector2(1,0) #moving right
 
 # Called when the node enters the scene tree for the first time.
@@ -30,10 +30,10 @@ func _process(_delta):
 	var usable_rect = DisplayServer.screen_get_usable_rect()
 	
 	#if right side of window > right side of screen
-	if window.position.x + window.size.x > usable_rect.x:
+	if window.position.x + window.size.x > usable_rect.end.x:
 		direction.x = -1
-		$AnimatedSprite2D.flip_h = true
+		$AnimatedSprite2D.flip_h = false
 
 	elif window.position.x < usable_rect.position.x:
 		direction.x = 1
-		$AnimatedSprite2D.flip_h = false
+		$AnimatedSprite2D.flip_h = true
