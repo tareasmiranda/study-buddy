@@ -7,10 +7,10 @@
 script = ExtResource("1_0xm2m")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=352718149]
-position = Vector2(98, 126.00001)
+position = Vector2(97.00001, 134)
 scale = Vector2(4.1287875, 4.1287875)
 sprite_frames = ExtResource("1_ig7tw")
-animation = &"walking"
+animation = &"idle"
 autoplay = "walking"
 flip_h = true
 
@@ -20,20 +20,30 @@ anchor_left = -1.3330001
 anchor_top = -3.739
 anchor_right = 1.0
 anchor_bottom = -2.071
-offset_left = 34.0
-offset_top = 73.0
-offset_right = 157.0
-offset_bottom = 209.0
+offset_left = 24.0
+offset_top = 69.0
+offset_right = 147.0
+offset_bottom = 205.0
 grow_horizontal = 2
 toggle_mode = false
 button_mask = 2
 switch_on_hover = true
-item_count = 4
-popup/item_0/text = "Hablar"
+item_count = 2
+popup/item_0/text = "Tareas"
 popup/item_0/id = 0
-popup/item_1/text = "Apostar"
+popup/item_1/text = "Nanais"
 popup/item_1/id = 1
-popup/item_2/text = "Nanais"
-popup/item_2/id = 2
-popup/item_3/text = "Tareas"
-popup/item_3/id = 3
+
+[node name="PopupWindow" type="Window" parent="." unique_id=1170905429]
+oversampling_override = 1.0
+position = Vector2i(0, 36)
+size = Vector2i(191, 291)
+visible = false
+
+[node name="Panel" type="Panel" parent="PopupWindow" unique_id=2056741509]
+offset_right = 191.0
+offset_bottom = 291.0
+
+[node name="ItemList" type="ItemList" parent="PopupWindow" unique_id=644119467]
+offset_right = 191.0
+offset_bottom = 291.0
