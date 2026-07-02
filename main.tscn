@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" uid="uid://bpn4urv65y5o5" path="res://scripts/main.gd" id="1_0xm2m"]
 [ext_resource type="SpriteFrames" uid="uid://bv5kjgnlafsmq" path="res://animations/Vpet.tres" id="1_ig7tw"]
+[ext_resource type="Texture2D" uid="uid://cfh1rppdudc5u" path="res://icon.png" id="3_h2yge"]
+[ext_resource type="Script" uid="uid://haxgvx1u7jf5" path="res://status_indicator.gd" id="4_1bvp3"]
 
 [node name="Main" type="Node2D" unique_id=102277029]
 script = ExtResource("1_0xm2m")
@@ -47,3 +49,18 @@ offset_bottom = 291.0
 [node name="ItemList" type="ItemList" parent="PopupWindow" unique_id=644119467]
 offset_right = 191.0
 offset_bottom = 291.0
+
+[node name="StatusIndicator" type="StatusIndicator" parent="." unique_id=782528855]
+icon = ExtResource("3_h2yge")
+script = ExtResource("4_1bvp3")
+
+[node name="TextEdit" type="TextEdit" parent="." unique_id=894500075]
+offset_right = 191.0
+offset_bottom = 69.0
+
+[node name="Button" type="Button" parent="." unique_id=133205892]
+offset_left = 135.0
+offset_top = 69.0
+offset_right = 193.0
+offset_bottom = 100.0
+text = "Okay"

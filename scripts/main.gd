@@ -6,26 +6,58 @@ var direction = Vector2(1, 0)
 var is_moving = true
 var is_minimized = false
 var is_jumping = false
+var is_faded_out = false  # NEW: tracks if pet is currently invisible
+
+var text_edit: TextEdit
+var okay_button: Button
+var talk_timer: Timer
+var is_talking = false
+const TALK_BUTTON_DELAY = 4.0  # seconds before Okay appears
 
 const WALK_ANIM = &"walking"
 const IDLE_ANIM = &"idle"
 const JUMP_ANIM = &"jump"
-const RESUME_DELAY = 3.0  # seconds to wait before auto-resuming
+const RESUME_DELAY = 3.0
+const FADE_OUT_DELAY = 10.0  # NEW: seconds before auto-fade
+const FADE_DURATION = 1.0    # NEW: how long the fade takes
 
 var window: Window
 var tareas: Window
 var popup_window: Window
 var animated_sprite: AnimatedSprite2D
 var menu_button: MenuButton
-var resume_timer: Timer  # NEW
+var resume_timer: Timer
+var fade_timer: Timer       # NEW
+var fade_tween: Tween       # NEW: keep reference to kill if needed
 
+var status_indicator: StatusIndicator
 
 func _ready() -> void:
+	# ... existing setup ...
+	
+	text_edit = $TextEdit      # ADD: TextEdit node
+	okay_button = $Button      # ADD: Button node ("Okay")
+	
+	# Configure TextEdit
+	text_edit.hide()
+	text_edit.editable = false
+	
+	# Configure Okay button
+	okay_button.hide()
+	okay_button.pressed.connect(_on_okay_pressed)
+	
+	# Talk timer (for button delay)
+	talk_timer = Timer.new()
+	talk_timer.one_shot = true
+	talk_timer.wait_time = TALK_BUTTON_DELAY
+	talk_timer.timeout.connect(_on_talk_timer_timeout)
+	add_child(talk_timer)
 	window = get_window()
 	animated_sprite = $AnimatedSprite2D
 	menu_button = $MenuButton
 	tareas = $Window
 	popup_window = $PopupWindow
+	status_indicator = $StatusIndicator  # NEW
 	
 	get_viewport().transparent_bg = true
 	window.transparent_bg = true
@@ -38,6 +70,9 @@ func _ready() -> void:
 	popup_window.exclusive = false
 	popup_window.close_requested.connect(_on_popup_window_close_requested)
 	
+	# NEW: Connect tray icon click
+	status_indicator.pressed.connect(_on_status_indicator_pressed)
+	
 	
 	var usable_rect = DisplayServer.screen_get_usable_rect()
 	var target_y = usable_rect.end.y - window.size.y
@@ -49,12 +84,20 @@ func _ready() -> void:
 	animated_sprite.animation_finished.connect(_on_animation_finished)
 	animated_sprite.play(WALK_ANIM)
 	
-	# NEW: Create resume timer
+	# Resume timer
 	resume_timer = Timer.new()
 	resume_timer.one_shot = true
 	resume_timer.wait_time = RESUME_DELAY
 	resume_timer.timeout.connect(_on_resume_timer_timeout)
 	add_child(resume_timer)
+	
+	# NEW: Fade-out timer
+	fade_timer = Timer.new()
+	fade_timer.one_shot = true
+	fade_timer.wait_time = FADE_OUT_DELAY
+	fade_timer.timeout.connect(_on_fade_timer_timeout)
+	add_child(fade_timer)
+	fade_timer.start()  # start counting down immediately
 
 
 func _on_popup_window_close_requested() -> void:
@@ -111,12 +154,12 @@ func _process(delta):
 func toggle_movement() -> void:
 	is_moving = !is_moving
 	if is_moving:
-		resume_timer.stop()  # NEW: cancel auto-resume if manually resumed
+		resume_timer.stop()
 		if not is_jumping:
 			animated_sprite.play(WALK_ANIM)
 	else:
 		animated_sprite.play(IDLE_ANIM)
-		resume_timer.start()  # NEW: start countdown to auto-resume
+		resume_timer.start()
 
 
 func _on_menu_item_pressed(id: int) -> void:
@@ -136,14 +179,69 @@ func _on_menu_item_pressed(id: int) -> void:
 func resume_movement() -> void:
 	if not is_moving:
 		is_moving = true
-		resume_timer.stop()  # NEW: cancel auto-resume if menu resumes movement
+		resume_timer.stop()
 		if not is_jumping:
 			animated_sprite.play(WALK_ANIM)
 
 
-# NEW: Auto-resume after delay
 func _on_resume_timer_timeout() -> void:
 	if not is_moving and not is_minimized and not is_jumping:
+		is_moving = true
+		animated_sprite.play(WALK_ANIM)
+
+
+# NEW: Fade out after 10 seconds of inactivity
+func _on_fade_timer_timeout() -> void:
+	if not is_faded_out:
+		fade_out()
+
+
+# NEW: Fade out animation
+func fade_out() -> void:
+	is_faded_out = true
+	fade_timer.stop()
+	
+	# Kill any existing fade tween
+	if fade_tween and fade_tween.is_valid():
+		fade_tween.kill()
+	
+	fade_tween = create_tween()
+	fade_tween.tween_property(animated_sprite, "modulate", Color(1, 1, 1, 0), FADE_DURATION)
+	fade_tween.tween_callback(_on_fade_out_complete)
+
+
+# NEW: Called when fade-out finishes — NOW hide the sprite
+func _on_fade_out_complete() -> void:
+	animated_sprite.hide()
+	# Optional: also hide the window borders so only tray icon remains
+	# window.hide()
+
+
+# NEW: Fade in (called from tray icon click)
+func fade_in() -> void:
+	if not is_faded_out:
+		return
+	
+	is_faded_out = false
+	animated_sprite.show()
+	animated_sprite.modulate = Color(1, 1, 1, 0)  # start fully transparent
+	
+	# Reset fade timer since there's activity
+	fade_timer.start()
+	
+	# Kill any existing fade tween
+	if fade_tween and fade_tween.is_valid():
+		fade_tween.kill()
+	
+	fade_tween = create_tween()
+	fade_tween.tween_property(animated_sprite, "modulate", Color(1, 1, 1, 1), FADE_DURATION)
+	fade_tween.tween_callback(_on_fade_in_complete)
+
+
+# NEW: Called when fade-in finishes
+func _on_fade_in_complete() -> void:
+	# Resume normal behavior
+	if not is_moving and not is_jumping:
 		is_moving = true
 		animated_sprite.play(WALK_ANIM)
 
@@ -154,7 +252,7 @@ func show_popup_window() -> void:
 
 func play_jump_animation() -> void:
 	is_jumping = true
-	resume_timer.stop()  # NEW: don't auto-resume during jump
+	resume_timer.stop()
 	animated_sprite.play(JUMP_ANIM)
 
 
@@ -165,23 +263,72 @@ func _on_animation_finished() -> void:
 			animated_sprite.play(WALK_ANIM)
 		else:
 			animated_sprite.play(IDLE_ANIM)
-			resume_timer.start()  # NEW: restart timer if still stopped after jump
+			resume_timer.start()
+
+# Call this to make the pet talk
+func talk(text: String) -> void:
+	if is_talking:
+		return
+	
+	is_talking = true
+	is_moving = false
+	animated_sprite.play(IDLE_ANIM)
+	
+	# Stop other timers
+	resume_timer.stop()
+	fade_timer.stop()
+	
+	# Show and configure TextEdit
+	text_edit.text = text
+	text_edit.show()
+	text_edit.editable = false
+	
+	# Hide Okay button initially, show after delay
+	okay_button.hide()
+	talk_timer.start()
+
+
+func _on_talk_timer_timeout() -> void:
+	okay_button.show()
+
+
+func _on_okay_pressed() -> void:
+	# Clear text and hide UI
+	text_edit.text = ""
+	text_edit.hide()
+	text_edit.editable = true
+	okay_button.hide()
+	
+	is_talking = false
+	
+	# Resume normal behavior
+	fade_timer.start()
+	is_moving = true
+	animated_sprite.play(WALK_ANIM)
 
 
 func minimize_to_tray() -> void:
 	is_minimized = true
 	is_moving = false
-	resume_timer.stop()  # NEW: stop timer when minimized
+	resume_timer.stop()
+	fade_timer.stop()  # NEW: don't fade while minimized
 	animated_sprite.pause()
 	
 	var usable_rect = DisplayServer.screen_get_usable_rect()
 	window.position = Vector2i(usable_rect.end.x, window.position.y)
 
 
+func _on_status_indicator_pressed() -> void:
+	if is_faded_out:
+		fade_in()
+	elif is_minimized:
+		restore_from_tray()
+
 func restore_from_tray() -> void:
 	is_minimized = false
 	is_moving = true
-	resume_timer.stop()  # NEW: stop timer when restored
+	resume_timer.stop()
+	fade_timer.start()  # NEW: restart fade countdown
 	animated_sprite.play(WALK_ANIM)
 	
 	var usable_rect = DisplayServer.screen_get_usable_rect()
