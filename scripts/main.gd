@@ -13,9 +13,9 @@ const WALK_ANIM = &"walking"
 const IDLE_ANIM = &"idle"
 const JUMP_ANIM = &"jump"
 const RESUME_DELAY = 3.0
-const FADE_OUT_DELAY = 5.0
+const FADE_OUT_DELAY = 10.0
 const FADE_DURATION = 1.0
-const TALK_BUTTON_DELAY = 1.0
+const TALK_BUTTON_DELAY = 2.0
 
 var window: Window
 var tareas: Window
@@ -30,8 +30,18 @@ var fade_timer: Timer
 var fade_tween: Tween
 var talk_timer: Timer
 
-# NEW: Dialogue system
+# Dialogue JSON
 var dialogues: Array = []
+
+# NEW: Task system
+var tasks: Array[Dictionary] = []
+var task_check_timer: Timer
+var task_name_input: LineEdit
+var hour_input: SpinBox
+var minute_input: SpinBox
+var add_task_button: Button
+var task_list: VBoxContainer
+const TASKS_SAVE_PATH = "user://tasks.json"
 
 
 func _ready() -> void:
@@ -62,6 +72,7 @@ func _ready() -> void:
 	okay_button.hide()
 	okay_button.pressed.connect(_on_okay_pressed)
 	
+
 	
 	var usable_rect = DisplayServer.screen_get_usable_rect()
 	var target_y = usable_rect.end.y - window.size.y
@@ -73,13 +84,14 @@ func _ready() -> void:
 	animated_sprite.animation_finished.connect(_on_animation_finished)
 	animated_sprite.play(WALK_ANIM)
 	
-	# Timers
+	# Resume timer
 	resume_timer = Timer.new()
 	resume_timer.one_shot = true
 	resume_timer.wait_time = RESUME_DELAY
 	resume_timer.timeout.connect(_on_resume_timer_timeout)
 	add_child(resume_timer)
 	
+	# Fade timer
 	fade_timer = Timer.new()
 	fade_timer.one_shot = true
 	fade_timer.wait_time = FADE_OUT_DELAY
@@ -87,17 +99,20 @@ func _ready() -> void:
 	add_child(fade_timer)
 	fade_timer.start()
 	
+	# Talk timer
 	talk_timer = Timer.new()
 	talk_timer.one_shot = true
 	talk_timer.wait_time = TALK_BUTTON_DELAY
 	talk_timer.timeout.connect(_on_talk_timer_timeout)
 	add_child(talk_timer)
 	
-	# NEW: Load dialogues from JSON
+	# Load dialogues
 	load_dialogues()
+	
+	# NEW: Setup task system
+	setup_task_system()
 
 
-# NEW: Load dialogues from JSON file
 func load_dialogues() -> void:
 	var file = FileAccess.open("res://dialogues.json", FileAccess.READ)
 	if file == null:
@@ -120,13 +135,144 @@ func load_dialogues() -> void:
 		push_error("Invalid JSON structure: expected {'dialogues': [...]}")
 
 
-# NEW: Get a random dialogue line
 func get_random_dialogue() -> String:
 	if dialogues.is_empty():
 		return "..."
-	
 	var index = randi() % dialogues.size()
 	return dialogues[index]
+
+
+# NEW: Setup task UI and timer
+func setup_task_system() -> void:
+	# Find nodes inside PopupWindow (searches recursively)
+	task_name_input = popup_window.find_child("TaskNameInput", true, false)
+	hour_input = popup_window.find_child("HourInput", true, false)
+	minute_input = popup_window.find_child("MinuteInput", true, false)
+	add_task_button = popup_window.find_child("AddTaskButton", true, false)
+	task_list = popup_window.find_child("TaskList", true, false)
+	
+	# Configure SpinBoxes if found
+	if hour_input:
+		hour_input.min_value = 0
+		hour_input.max_value = 23
+		hour_input.value = 12
+	if minute_input:
+		minute_input.min_value = 0
+		minute_input.max_value = 59
+		minute_input.value = 0
+	
+	# Connect add button
+	if add_task_button:
+		add_task_button.pressed.connect(_on_add_task_pressed)
+	
+	# Task check timer — every 15 seconds
+	task_check_timer = Timer.new()
+	task_check_timer.wait_time = 15.0
+	task_check_timer.timeout.connect(_check_tasks)
+	add_child(task_check_timer)
+	task_check_timer.start()
+	
+	# Load saved tasks
+	load_tasks()
+	update_task_display()
+
+
+# NEW: Add task from UI
+func _on_add_task_pressed() -> void:
+	if task_name_input == null:
+		return
+	
+	var name = task_name_input.text.strip_edges()
+	if name.is_empty():
+		return
+	
+	var hour = 12
+	var minute = 0
+	if hour_input:
+		hour = int(hour_input.value)
+	if minute_input:
+		minute = int(minute_input.value)
+	
+	add_task(name, hour, minute)
+	task_name_input.text = ""
+
+
+# NEW: Add a task
+func add_task(name: String, hour: int, minute: int) -> void:
+	tasks.append({
+		"name": name,
+		"hour": hour,
+		"minute": minute
+	})
+	save_tasks()
+	update_task_display()
+
+
+# NEW: Remove task by index
+func remove_task(index: int) -> void:
+	if index >= 0 and index < tasks.size():
+		tasks.remove_at(index)
+		save_tasks()
+		update_task_display()
+
+
+# NEW: Refresh the task list UI
+func update_task_display() -> void:
+	if task_list == null:
+		return
+	
+	# Clear old rows
+	for child in task_list.get_children():
+		child.queue_free()
+	
+	# Create row for each task
+	for i in range(tasks.size()):
+		var task = tasks[i]
+		var row = HBoxContainer.new()
+		
+		var label = Label.new()
+		label.text = "%02d:%02d  —  %s" % [task.hour, task.minute, task.name]
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		var del_btn = Button.new()
+		del_btn.text = "X"
+		del_btn.pressed.connect(remove_task.bind(i))
+		
+		row.add_child(label)
+		row.add_child(del_btn)
+		task_list.add_child(row)
+
+
+# NEW: Check if any task time matches current time
+func _check_tasks() -> void:
+	var time = Time.get_time_dict_from_system()
+	var current_hour = time.hour
+	var current_minute = time.minute
+	
+	var triggered_indices: Array[int] = []
+	
+	for i in range(tasks.size()):
+		var task = tasks[i]
+		if task.hour == current_hour and task.minute == current_minute:
+			triggered_indices.append(i)
+			alert_task(task.name)
+	
+	# Remove triggered tasks (backwards to keep indices valid)
+	for i in range(triggered_indices.size() - 1, -1, -1):
+		tasks.remove_at(triggered_indices[i])
+	
+	if not triggered_indices.is_empty():
+		save_tasks()
+		update_task_display()
+
+
+# NEW: Alert the pet to appear and talk
+func alert_task(task_name: String) -> void:
+	if is_minimized:
+		restore_from_tray()
+	if is_faded_out:
+		fade_in()
+	talk(task_name)
 
 
 func _on_popup_window_close_requested() -> void:
@@ -140,10 +286,9 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.pressed:
 			if is_click_on_sprite(event.position):
-				# NEW: Left click = talk with random dialogue
 				if event.button_index == MOUSE_BUTTON_LEFT:
-					talk(get_random_dialogue())
-				# Right click = toggle movement (old behavior)
+					if not is_talking:
+						talk(get_random_dialogue())
 				elif event.button_index == MOUSE_BUTTON_RIGHT:
 					toggle_movement()
 
@@ -286,9 +431,6 @@ func _on_status_indicator_pressed() -> void:
 
 
 func talk(text: String) -> void:
-	if is_talking:
-		return
-	
 	is_talking = true
 	is_moving = false
 	animated_sprite.play(IDLE_ANIM)
@@ -364,3 +506,27 @@ func restore_from_tray() -> void:
 	
 	direction = Vector2(-1, 0)
 	animated_sprite.flip_h = false
+
+
+# NEW: Save tasks to file
+func save_tasks() -> void:
+	var file = FileAccess.open(TASKS_SAVE_PATH, FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(tasks))
+		file.close()
+
+
+func load_tasks() -> void:
+	if not FileAccess.file_exists(TASKS_SAVE_PATH):
+		return
+	
+	var file = FileAccess.open(TASKS_SAVE_PATH, FileAccess.READ)
+	if file:
+		var json_text = file.get_as_text()
+		file.close()
+		
+		var json = JSON.new()
+		if json.parse(json_text) == OK:
+			var data = json.get_data()
+			if data is Array:
+				tasks.assign(data)
