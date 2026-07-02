@@ -79,6 +79,7 @@ offset_right = 238.0
 offset_bottom = 291.0
 
 [node name="StatusIndicator" type="StatusIndicator" parent="." unique_id=782528855]
+tooltip = "Study Buddy ejecutandose..."
 icon = ExtResource("3_h2yge")
 
 [node name="TextEdit" type="TextEdit" parent="." unique_id=894500075]

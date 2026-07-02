@@ -8,6 +8,7 @@ var is_minimized = false
 var is_jumping = false
 var is_faded_out = false
 var is_talking = false
+var is_idling = false  # NEW: tracks random idle state
 
 const WALK_ANIM = &"walking"
 const IDLE_ANIM = &"idle"
@@ -16,6 +17,11 @@ const RESUME_DELAY = 3.0
 const FADE_OUT_DELAY = 10.0
 const FADE_DURATION = 1.0
 const TALK_BUTTON_DELAY = 1.0
+const PERIODIC_TALK_INTERVAL = 30.0
+const AUTO_HIDE_AFTER_TALK = 3.0
+const IDLE_STOP_MIN_TIME = 3.0   # NEW: min seconds between random stops
+const IDLE_STOP_MAX_TIME = 6.0   # NEW: max seconds between random stops
+const IDLE_DURATION = 1.0        # NEW: how long the idle stop lasts
 
 var window: Window
 var tareas: Window
@@ -29,6 +35,12 @@ var resume_timer: Timer
 var fade_timer: Timer
 var fade_tween: Tween
 var talk_timer: Timer
+var periodic_talk_timer: Timer
+var auto_hide_timer: Timer
+
+# NEW: Random idle timers
+var idle_stop_timer: Timer
+var idle_duration_timer: Timer
 
 # Dialogue JSON
 var dialogues: Array = []
@@ -72,7 +84,6 @@ func _ready() -> void:
 	okay_button.hide()
 	okay_button.pressed.connect(_on_okay_pressed)
 	
-
 	
 	var usable_rect = DisplayServer.screen_get_usable_rect()
 	var target_y = usable_rect.end.y - window.size.y
@@ -106,11 +117,62 @@ func _ready() -> void:
 	talk_timer.timeout.connect(_on_talk_timer_timeout)
 	add_child(talk_timer)
 	
+	# Periodic talk timer
+	periodic_talk_timer = Timer.new()
+	periodic_talk_timer.wait_time = PERIODIC_TALK_INTERVAL
+	periodic_talk_timer.timeout.connect(_on_periodic_talk)
+	add_child(periodic_talk_timer)
+	periodic_talk_timer.start()
+	
+	# Auto-hide timer
+	auto_hide_timer = Timer.new()
+	auto_hide_timer.one_shot = true
+	auto_hide_timer.wait_time = AUTO_HIDE_AFTER_TALK
+	auto_hide_timer.timeout.connect(_on_auto_hide_timeout)
+	add_child(auto_hide_timer)
+	
+	# NEW: Random idle stop timer
+	idle_stop_timer = Timer.new()
+	idle_stop_timer.one_shot = true
+	idle_stop_timer.timeout.connect(_on_idle_stop_triggered)
+	add_child(idle_stop_timer)
+	_start_idle_stop_timer()  # start first countdown
+	
+	# NEW: Idle duration timer
+	idle_duration_timer = Timer.new()
+	idle_duration_timer.one_shot = true
+	idle_duration_timer.wait_time = IDLE_DURATION
+	idle_duration_timer.timeout.connect(_on_idle_duration_finished)
+	add_child(idle_duration_timer)
+	
 	# Load dialogues
 	load_dialogues()
 	
 	# Setup task system
 	setup_task_system()
+
+
+func _start_idle_stop_timer() -> void:
+	var random_wait = randf_range(IDLE_STOP_MIN_TIME, IDLE_STOP_MAX_TIME)
+	idle_stop_timer.wait_time = random_wait
+	idle_stop_timer.start()
+
+
+func _on_idle_stop_triggered() -> void:
+	# Only idle if currently walking and not doing something else
+	if is_moving and not is_talking and not is_jumping and not is_minimized and not is_faded_out and not is_idling:
+		is_idling = true
+		is_moving = false
+		animated_sprite.play(IDLE_ANIM)
+		idle_duration_timer.start()
+
+
+func _on_idle_duration_finished() -> void:
+	if is_idling:
+		is_idling = false
+		is_moving = true
+		animated_sprite.play(WALK_ANIM)
+		_start_idle_stop_timer()  # schedule next random stop
 
 
 func load_dialogues() -> void:
@@ -302,7 +364,7 @@ func is_click_on_sprite(mouse_pos: Vector2) -> bool:
 
 
 func _process(delta):
-	if not is_moving or is_minimized or is_talking:
+	if not is_moving or is_minimized or is_talking or is_idling:  # NEW: guard is_idling
 		return
 	
 	var move_amount = move_speed * delta
@@ -322,12 +384,24 @@ func toggle_movement() -> void:
 	if is_talking:
 		return
 	
+	# NEW: Handle idle state
+	if is_idling:
+		is_idling = false
+		idle_duration_timer.stop()
+		is_moving = true
+		animated_sprite.play(WALK_ANIM)
+		_start_idle_stop_timer()
+		return
+	
 	is_moving = !is_moving
 	if is_moving:
 		resume_timer.stop()
+		idle_stop_timer.start()  # NEW: resume random stops
 		if not is_jumping:
 			animated_sprite.play(WALK_ANIM)
 	else:
+		idle_stop_timer.stop()  # NEW: pause random stops when manually stopped
+		idle_duration_timer.stop()
 		animated_sprite.play(IDLE_ANIM)
 		resume_timer.start()
 
@@ -353,13 +427,15 @@ func resume_movement() -> void:
 	if not is_moving:
 		is_moving = true
 		resume_timer.stop()
+		idle_stop_timer.start()  # NEW: resume random stops
 		if not is_jumping:
 			animated_sprite.play(WALK_ANIM)
 
 
 func _on_resume_timer_timeout() -> void:
-	if not is_moving and not is_minimized and not is_jumping and not is_talking:
+	if not is_moving and not is_minimized and not is_jumping and not is_talking and not is_idling:  # NEW: guard is_idling
 		is_moving = true
+		idle_stop_timer.start()  # NEW: resume random stops
 		animated_sprite.play(WALK_ANIM)
 
 
@@ -371,6 +447,8 @@ func _on_fade_timer_timeout() -> void:
 func fade_out() -> void:
 	is_faded_out = true
 	fade_timer.stop()
+	idle_stop_timer.stop()  # NEW: stop random stops while faded
+	idle_duration_timer.stop()
 	
 	if fade_tween and fade_tween.is_valid():
 		fade_tween.kill()
@@ -393,6 +471,7 @@ func fade_in() -> void:
 	animated_sprite.modulate = Color(1, 1, 1, 0)
 	
 	fade_timer.start()
+	idle_stop_timer.start()  # NEW: resume random stops
 	
 	if fade_tween and fade_tween.is_valid():
 		fade_tween.kill()
@@ -409,11 +488,41 @@ func _on_fade_in_complete() -> void:
 
 
 func _on_status_indicator_pressed() -> void:
-	# FIX: Handle both independently — restore position first, then fade in
 	if is_minimized:
 		restore_from_tray()
 	if is_faded_out:
 		fade_in()
+
+
+func _on_periodic_talk() -> void:
+	if is_talking:
+		return
+	
+	if is_faded_out:
+		fade_in()
+	
+	if is_minimized:
+		restore_from_tray()
+	
+	talk(get_random_dialogue())
+	
+	auto_hide_timer.start()
+
+
+func _on_auto_hide_timeout() -> void:
+	if is_talking:
+		_end_talk_and_hide()
+
+
+func _end_talk_and_hide() -> void:
+	text_edit.text = ""
+	text_edit.hide()
+	text_edit.editable = true
+	okay_button.hide()
+	
+	is_talking = false
+	
+	fade_out()
 
 
 func talk(text: String) -> void:
@@ -423,6 +532,9 @@ func talk(text: String) -> void:
 	
 	resume_timer.stop()
 	fade_timer.stop()
+	periodic_talk_timer.stop()
+	idle_stop_timer.stop()  # NEW: stop random stops during talk
+	idle_duration_timer.stop()
 	
 	text_edit.text = text
 	text_edit.show()
@@ -444,6 +556,9 @@ func _on_okay_pressed() -> void:
 	
 	is_talking = false
 	
+	periodic_talk_timer.start()
+	idle_stop_timer.start()  # NEW: resume random stops after talk
+	
 	fade_timer.start()
 	is_moving = true
 	animated_sprite.play(WALK_ANIM)
@@ -456,6 +571,8 @@ func show_popup_window() -> void:
 func play_jump_animation() -> void:
 	is_jumping = true
 	resume_timer.stop()
+	idle_stop_timer.stop()  # NEW: stop random stops during jump
+	idle_duration_timer.stop()
 	animated_sprite.play(JUMP_ANIM)
 
 
@@ -464,6 +581,7 @@ func _on_animation_finished() -> void:
 		is_jumping = false
 		if is_moving:
 			animated_sprite.play(WALK_ANIM)
+			idle_stop_timer.start()  # NEW: resume random stops after jump
 		else:
 			animated_sprite.play(IDLE_ANIM)
 			resume_timer.start()
@@ -474,6 +592,9 @@ func minimize_to_tray() -> void:
 	is_moving = false
 	resume_timer.stop()
 	fade_timer.stop()
+	periodic_talk_timer.stop()
+	idle_stop_timer.stop()  # NEW: stop random stops in tray
+	idle_duration_timer.stop()
 	animated_sprite.pause()
 	
 	var usable_rect = DisplayServer.screen_get_usable_rect()
@@ -485,8 +606,9 @@ func restore_from_tray() -> void:
 	is_moving = true
 	resume_timer.stop()
 	fade_timer.start()
+	periodic_talk_timer.start()
+	idle_stop_timer.start()  # NEW: resume random stops after restore
 	
-	# FIX: Ensure sprite is visible and fully opaque
 	animated_sprite.show()
 	animated_sprite.modulate = Color(1, 1, 1, 1)
 	animated_sprite.play(WALK_ANIM)
