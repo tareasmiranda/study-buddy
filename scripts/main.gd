@@ -15,7 +15,7 @@ const JUMP_ANIM = &"jump"
 const RESUME_DELAY = 3.0
 const FADE_OUT_DELAY = 10.0
 const FADE_DURATION = 1.0
-const TALK_BUTTON_DELAY = 2.0
+const TALK_BUTTON_DELAY = 1.0
 
 var window: Window
 var tareas: Window
@@ -33,7 +33,7 @@ var talk_timer: Timer
 # Dialogue JSON
 var dialogues: Array = []
 
-# NEW: Task system
+# Task system
 var tasks: Array[Dictionary] = []
 var task_check_timer: Timer
 var task_name_input: LineEdit
@@ -109,7 +109,7 @@ func _ready() -> void:
 	# Load dialogues
 	load_dialogues()
 	
-	# NEW: Setup task system
+	# Setup task system
 	setup_task_system()
 
 
@@ -142,16 +142,13 @@ func get_random_dialogue() -> String:
 	return dialogues[index]
 
 
-# NEW: Setup task UI and timer
 func setup_task_system() -> void:
-	# Find nodes inside PopupWindow (searches recursively)
 	task_name_input = popup_window.find_child("TaskNameInput", true, false)
 	hour_input = popup_window.find_child("HourInput", true, false)
 	minute_input = popup_window.find_child("MinuteInput", true, false)
 	add_task_button = popup_window.find_child("AddTaskButton", true, false)
 	task_list = popup_window.find_child("TaskList", true, false)
 	
-	# Configure SpinBoxes if found
 	if hour_input:
 		hour_input.min_value = 0
 		hour_input.max_value = 23
@@ -161,23 +158,19 @@ func setup_task_system() -> void:
 		minute_input.max_value = 59
 		minute_input.value = 0
 	
-	# Connect add button
 	if add_task_button:
 		add_task_button.pressed.connect(_on_add_task_pressed)
 	
-	# Task check timer — every 15 seconds
 	task_check_timer = Timer.new()
 	task_check_timer.wait_time = 15.0
 	task_check_timer.timeout.connect(_check_tasks)
 	add_child(task_check_timer)
 	task_check_timer.start()
 	
-	# Load saved tasks
 	load_tasks()
 	update_task_display()
 
 
-# NEW: Add task from UI
 func _on_add_task_pressed() -> void:
 	if task_name_input == null:
 		return
@@ -197,7 +190,6 @@ func _on_add_task_pressed() -> void:
 	task_name_input.text = ""
 
 
-# NEW: Add a task
 func add_task(name: String, hour: int, minute: int) -> void:
 	tasks.append({
 		"name": name,
@@ -208,7 +200,6 @@ func add_task(name: String, hour: int, minute: int) -> void:
 	update_task_display()
 
 
-# NEW: Remove task by index
 func remove_task(index: int) -> void:
 	if index >= 0 and index < tasks.size():
 		tasks.remove_at(index)
@@ -216,16 +207,13 @@ func remove_task(index: int) -> void:
 		update_task_display()
 
 
-# NEW: Refresh the task list UI
 func update_task_display() -> void:
 	if task_list == null:
 		return
 	
-	# Clear old rows
 	for child in task_list.get_children():
 		child.queue_free()
 	
-	# Create row for each task
 	for i in range(tasks.size()):
 		var task = tasks[i]
 		var row = HBoxContainer.new()
@@ -243,7 +231,6 @@ func update_task_display() -> void:
 		task_list.add_child(row)
 
 
-# NEW: Check if any task time matches current time
 func _check_tasks() -> void:
 	var time = Time.get_time_dict_from_system()
 	var current_hour = time.hour
@@ -257,7 +244,6 @@ func _check_tasks() -> void:
 			triggered_indices.append(i)
 			alert_task(task.name)
 	
-	# Remove triggered tasks (backwards to keep indices valid)
 	for i in range(triggered_indices.size() - 1, -1, -1):
 		tasks.remove_at(triggered_indices[i])
 	
@@ -266,7 +252,6 @@ func _check_tasks() -> void:
 		update_task_display()
 
 
-# NEW: Alert the pet to appear and talk
 func alert_task(task_name: String) -> void:
 	if is_minimized:
 		restore_from_tray()
@@ -424,10 +409,11 @@ func _on_fade_in_complete() -> void:
 
 
 func _on_status_indicator_pressed() -> void:
+	# FIX: Handle both independently — restore position first, then fade in
+	if is_minimized:
+		restore_from_tray()
 	if is_faded_out:
 		fade_in()
-	elif is_minimized:
-		restore_from_tray()
 
 
 func talk(text: String) -> void:
@@ -499,6 +485,10 @@ func restore_from_tray() -> void:
 	is_moving = true
 	resume_timer.stop()
 	fade_timer.start()
+	
+	# FIX: Ensure sprite is visible and fully opaque
+	animated_sprite.show()
+	animated_sprite.modulate = Color(1, 1, 1, 1)
 	animated_sprite.play(WALK_ANIM)
 	
 	var usable_rect = DisplayServer.screen_get_usable_rect()
@@ -508,7 +498,6 @@ func restore_from_tray() -> void:
 	animated_sprite.flip_h = false
 
 
-# NEW: Save tasks to file
 func save_tasks() -> void:
 	var file = FileAccess.open(TASKS_SAVE_PATH, FileAccess.WRITE)
 	if file:
